@@ -1,0 +1,230 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<time.h>
+struct RecDate{
+		long Rec_rank;		/*排名*/
+		int Rec_mun;		/*学号*/
+		char Rec_name[15];	/*姓名*/
+		double Rec_win;		/*胜场次数*/
+		double Rec_lose;	/*负场次数*/
+		double Rec_tie;		/*平局次数*/
+		double Rec_rate;	/*胜率*/
+};
+void main()
+{
+FILE *fp1,*fp2;
+int myselect;
+while((myselect=function_select())!=0)
+{
+	switch(myselect)
+	{
+		case 1: game();											/*练习模式*/
+				break;
+		case 2:	fp2=openfile("date1.txt","wb+");
+				fp1=openfile("date.txt","ab+");					/*实名对战；*/
+				change_Rec(fp1,fp2);	/*修改战绩*/
+				closefile(fp1);
+				closefile(fp2);
+				fp2=openfile("date1.dat","ab+");
+				fp1=openfile("date.dat","wb+");
+				exchange(fp1,fp2);		/*转移数据*/
+				closefile(fp1);
+				closefile(fp2);
+				break;
+		case 3: fp1=openfile("date.txt","ab+");					/*注册账号*/		
+				add_NewRec(fp1);
+				closefile(fp1);
+				break;
+		case 4: fp1=openfile("date.txt","ab+");
+				fp2=openfile("rank.txt","wb+");
+				rank_AllRec(fp1,fp2);							/*查看所有人战绩*/
+				closefile(fp1);
+				closefile(fp2);
+				fp2=openfile("rank.txt","ab+");
+				show_AllRec(fp2);
+				closefile(fp2);
+				break;
+		case 5: rule();
+				system("cls");
+				continue;		
+		default: printf("输入有误，请重新选择！");
+				break;
+	}}
+}
+
+/*菜单选项*/
+int function_select()		/*菜单*/
+{
+	int myselect;
+	printf("\n请输入你的选择：\n");
+	printf("1—练习模式\n");
+	printf("2—实名对战（必须拥有账号）\n");
+	printf("3—注册账号\n");
+	printf("4—查看所有人战绩\n");
+	printf("5—游戏规则\n");
+	printf("0—结束程序\n");
+	scanf("%d",&myselect);
+	return myselect;
+};
+FILE *openfile(FILE *filename,char *openmode)		/*打开文件*/
+{
+	FILE *fp;
+	if((fp=fopen(filename,openmode))==NULL)
+	{
+		printf("无法打开指定文件！\n");
+		exit(0);
+	}
+	return(fp);
+}
+FILE *closefile(FILE *filename)		/*关闭文件*/
+{
+	if(fclose(filename))
+	{
+		printf("无法关闭指定文件！\n");
+		exit(0);
+	}
+}
+int game()		/*游戏模块*/
+{
+	int com,user,win=0,lose=0;
+	int res,i=0,sum=0;
+	printf("1—剪刀，2—石头，3—布\n");
+	while(i<7&&win<4&&lose<4)
+	{
+	i++; 
+	srand(time(0));
+	scanf("%d",&user);
+	com=rand()%3+1;
+	printf("电脑出%s\n",com==1?"剪刀":com==2?"石头":"布");
+	switch(com-user)
+	{
+	 case 0: printf("—平手—\n");res=0;break;
+	 case 1:
+	 case -2: printf("—电脑赢了—\n");res=-1;lose++;break;
+	 case -1: 
+	 case 2: printf("—你赢了—\n");res=1;win++;break;
+	 default: printf("error!!!");break;
+	}
+	sum+=res;
+	}
+	if(sum>0){res=1;printf("—你战胜了电脑并向TA扔出了代表善意的碱肥皂—\n");}
+	else if(sum==0){res=0;printf("—平局什么的最他妈尴尬—\n");}
+	else {res=-1;printf("—电脑狠狠地虐了你，并对你说了声：silly B—\n");}
+	return res;
+}
+/*获取文件中账号总数*/
+long get_RecCount(FILE *file)
+{
+	long Rec_begin,Rec_end,Rec_count;
+	fseek(file,0L,SEEK_SET);
+	Rec_begin=ftell(file);
+	fseek(file,0L,SEEK_END);
+	Rec_end=ftell(file);
+	Rec_count=(Rec_end-Rec_begin)/sizeof(struct RecDate);
+	return Rec_count;
+}
+/*更新账号战绩*/
+void change_Rec(FILE *file,FILE *file1)
+{
+	long RecCount;
+	int mun,judge=1,i,j;
+	struct RecDate date_log[100];
+	char name[15];
+	RecCount=get_RecCount(file);
+	while(judge){
+	printf("登录界面\n");
+	printf("请输入学号\n");
+	scanf("%d",&mun); 
+	printf("请输入姓名\n");
+	scanf("%s",name[9]);
+	fseek(file,0L,SEEK_SET);
+	for(i=0;i<50;i++)
+	{
+		fread(&date_log[i],sizeof(struct RecDate),1,file);
+		if(date_log[i].Rec_mun==mun&&date_log[i].Rec_name==name){judge=0;j=i;}
+		
+	}
+	if(judge)printf("输入账号不正确，请重新输入\n");
+		}
+	switch(game())			/*比赛结果记录*/
+	{
+		case 1: date_log[j].Rec_win+=1;
+		case 0: date_log[j].Rec_tie+=1;
+		case -1: date_log[j].Rec_lose+=1;
+	}
+	date_log[j].Rec_rate=date_log[j].Rec_win/(date_log[j].Rec_win+date_log[j].Rec_lose+date_log[j].Rec_tie);
+	for(i=0;i<RecCount;i++)
+	fwrite(&date_log[i],sizeof(struct RecDate),1,file1);
+}
+
+exchange(FILE *file,FILE *file1)
+{
+	int i;
+	long RecCount;
+	struct RecDate date_log[100];
+	RecCount=get_RecCount(file);
+	for(i=0;i<RecCount;i++)
+	fread(&date_log[i],sizeof(struct RecDate),1,file1);
+	for(i=0;i<RecCount;i++)
+	fwrite(&date_log[i],sizeof(struct RecDate),1,file);
+}
+/*添加账户*/
+add_NewRec(FILE *file)
+{
+	struct RecDate date_log;
+	printf("请输入学号\n");
+	scanf("%d",&date_log.Rec_mun); 
+	printf("请输入姓名\n");
+	scanf("%s",&date_log.Rec_name);
+	date_log.Rec_win=0;
+	date_log.Rec_lose=0;
+	date_log.Rec_tie=0;
+	date_log.Rec_rate=0;
+	date_log.Rec_rank=0;
+	rewind(file);
+	fwrite(&date_log,sizeof(struct RecDate),1,file);
+}
+/*排序*/
+void rank_AllRec(FILE *file,FILE *file1)
+{	
+	long RecCount;
+	int i,j,imax;
+	struct RecDate date_log[100],temp;
+	RecCount=get_RecCount(file);
+	for(i=0;i<RecCount;i++)
+	fread(&date_log[i],sizeof(struct RecDate),1,file);
+	for(i=0;i<RecCount-1;i++)
+	{
+		imax=i;
+		for(j=i+1;j<RecCount;j++)
+		if(date_log[j].Rec_rate>date_log[imax].Rec_rate) imax=j;
+		temp=date_log[i];date_log[i]=date_log[imax];date_log[imax]=temp;
+	}
+	for(i=0;i<RecCount;i++)
+	fwrite(&date_log[i],sizeof(struct RecDate),1,file1);
+}
+/*查看排名（按胜率由高到低排列）*/
+void show_AllRec(FILE *file)
+{
+	struct RecDate date_log;
+	fseek(file,0L,SEEK_SET);
+	fread(&date_log,sizeof(struct RecDate),1,file);
+	printf("排名    学号          姓名    胜场    负场    平局    胜率\n");
+	while(!feof(file))
+	{
+		printf("%d  %14d %4c %9.0f  %6.0f  %7.0f  %7.2f\n",date_log.Rec_rank,date_log.Rec_mun,date_log.Rec_name[15],date_log.Rec_win,date_log.Rec_lose,date_log.Rec_tie,date_log.Rec_rate);
+		fread(&date_log,sizeof(struct RecDate),1,file);
+	}
+	
+}
+/*规则*/
+void rule()
+{	
+	int n;
+	printf("规则：本游戏分练习模式与实名对战两种游戏方式\n
+		练习模式：七局四胜，即一方在七局之内赢满四局则胜，\n若满七局未分胜负则以胜场多的一方获胜，反之平局\n
+		实名对战：玩家需先依次录入自己的学号，姓名，然后\n进行游戏，规则与练习模式一致，游戏结束后录入成绩\n");
+		printf("输入任意字母或数字返回菜单\n");
+		scanf("%d",&n);
+}
